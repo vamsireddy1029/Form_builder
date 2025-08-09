@@ -487,9 +487,6 @@ const FieldConfigDialog: React.FC<{
       options: options.filter((_, i) => i !== index)
     });
   };
-
-  const availableParentFields = allFields.filter(f => f.id !== localField.id && !f.isDerived);
-
   if (!open) return null;
 
   return (
@@ -699,11 +696,10 @@ const PreviewForm: React.FC<{ form: FormSchema }> = ({ form }) => {
               parentValues[`parentField${field.parentFields?.indexOf(parentId)! + 1}`] = formState[parentId];
             }
           });
-
           const result = new Function(...Object.keys(parentValues), `return ${field.derivationFormula}`)(...Object.values(parentValues));
           newState[field.id] = String(result);
         } catch (error) {
-          newState[field.id] = 'Error in formula';
+          newState[field.id] = 'Error';
         }
       }
     });
