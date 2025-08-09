@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, Save, Edit3, Trash2, ChevronUp, ChevronDown, 
   Eye, Layers, Settings, Sparkles, Code, FileText,
-  Calendar, CheckSquare, Radio, Type, Hash, AlignLeft
+  Calendar, CheckSquare, Radio, Type, Hash, AlignLeft,
+  AlertTriangle
 } from 'lucide-react';
 
 type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date';
@@ -71,6 +72,23 @@ const FormBuilderApp: React.FC = () => {
   const saveForms = (updatedForms: FormSchema[]) => {
     sessionStorage.setItem('formBuilderSchemas', JSON.stringify(updatedForms));
     setForms(updatedForms);
+  };
+
+  const deleteForm = (formId: string) => {
+    const updatedForms = forms.filter(form => form.id !== formId);
+    saveForms(updatedForms);
+    
+    // Show success message
+    const successDiv = document.createElement('div');
+    successDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+    successDiv.textContent = 'Form deleted successfully!';
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => successDiv.classList.remove('translate-x-full'), 100);
+    setTimeout(() => {
+      successDiv.classList.add('translate-x-full');
+      setTimeout(() => document.body.removeChild(successDiv), 300);
+    }, 3000);
   };
 
   const Navigation = () => (
@@ -143,6 +161,7 @@ const FormBuilderApp: React.FC = () => {
           setPreviewForm(form);
           setCurrentRoute('preview');
         }}
+        onDelete={deleteForm}
       />
     </div>
   );
@@ -1040,10 +1059,74 @@ const PreviewForm: React.FC<{ form: FormSchema }> = ({ form }) => {
   );
 };
 
+const ConfirmDeleteDialog: React.FC<{
+  isOpen: boolean;
+  formName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, formName, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 transform scale-100 transition-transform">
+        <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+          <AlertTriangle className="w-8 h-8 text-red-600" />
+        </div>
+        
+        <h3 className="text-xl font-bold text-gray-800 text-center mb-2">Delete Form</h3>
+        <p className="text-gray-600 text-center mb-6">
+          Are you sure you want to delete "<span className="font-semibold text-gray-800">{formName}</span>"? 
+          This action cannot be undone.
+        </p>
+        
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-6 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+          >
+            Delete Form
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MyForms: React.FC<{
   forms: FormSchema[];
   onPreview: (form: FormSchema) => void;
-}> = ({ forms, onPreview }) => {
+  onDelete: (formId: string) => void;
+}> = ({ forms, onPreview, onDelete }) => {
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; formId: string; formName: string }>({
+    isOpen: false,
+    formId: '',
+    formName: ''
+  });
+
+  const handleDeleteClick = (form: FormSchema) => {
+    setDeleteDialog({
+      isOpen: true,
+      formId: form.id,
+      formName: form.name
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    onDelete(deleteDialog.formId);
+    setDeleteDialog({ isOpen: false, formId: '', formName: '' });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({ isOpen: false, formId: '', formName: '' });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Header */}
@@ -1097,9 +1180,18 @@ const MyForms: React.FC<{
                       })}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-purple-600">{form.fields.length}</div>
-                    <div className="text-xs text-gray-500">fields</div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-purple-600">{form.fields.length}</div>
+                      <div className="text-xs text-gray-500">fields</div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteClick(form)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100"
+                      title="Delete form"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -1133,6 +1225,14 @@ const MyForms: React.FC<{
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        isOpen={deleteDialog.isOpen}
+        formName={deleteDialog.formName}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 };
